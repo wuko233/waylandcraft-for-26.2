@@ -14,7 +14,6 @@
 		"NativeImageMixin",
 		"ItemFrameRendererMixin",
 		"ItemFrameRenderStateMixin",
-		"IGlTextureMixin",
 		"FramerateLimitTrackerMixin",
 		"TitleScreenMixin",
 		"PauseScreenMixin"
