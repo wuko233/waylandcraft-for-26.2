@@ -41,7 +41,7 @@ public class WindowTranslucencyHotfix {
 		Optional<Vector4fc> clearColor = Optional.empty();
 		try(RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "translucency_hotfix", Minecraft.getInstance().gameRenderer.mainRenderTarget().getColorTextureView(), clearColor)) {
 			pass.setPipeline(TRANSLUCENCY_HOTFIX_PIPELINE);
-			pass.draw(0, 3, 1, 0);
+			pass.draw(3, 1, 0, 0);
 		}
 	}
 	

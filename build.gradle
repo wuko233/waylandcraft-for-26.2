@@ -77,8 +77,10 @@ jar {
 	def natives = []
 
 	// Host-specific native library
-	def nativeFile = file("native/target/debug/libwaylandcraft.so")
-	if(nativeFile.exists()) {
+	def nativeFileDebug = file("native/target/debug/libwaylandcraft.so")
+	def nativeFileRelease = file("native/target/release/libwaylandcraft.so")
+	def nativeFile = nativeFileDebug.exists() ? nativeFileDebug : (nativeFileRelease.exists() ? nativeFileRelease : null)
+	if(nativeFile != null) {
 		from(nativeFile)
 		natives.add("host")
 	}

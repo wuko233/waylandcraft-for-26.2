@@ -40,6 +40,7 @@ import net.minecraft.util.Util;
 import net.minecraft.world.phys.Vec3;
 
 public class RenderUtils {
+	private static final boolean USE_VANILLA_FRAMEBUFFER_RENDER_TYPE = true;
 	
 	private static final RenderPipeline.Snippet WINDOW_PIPELINE_SNIPPET = RenderPipeline.builder()
 			.withVertexShader(Identifier.fromNamespaceAndPath(WaylandCraftCommon.MOD_ID, "core/rendertype_window"))
@@ -51,39 +52,39 @@ public class RenderUtils {
 			.withPrimitiveTopology(PrimitiveTopology.QUADS)
 			.buildSnippet();
 	
-	private static final RenderPipeline WINDOW_CUTOUT_PIPELINE = RenderPipeline.builder(WINDOW_PIPELINE_SNIPPET)
+	private static final RenderPipeline WINDOW_CUTOUT_PIPELINE = RenderPipelines.register(RenderPipeline.builder(WINDOW_PIPELINE_SNIPPET)
 			.withLocation(Identifier.fromNamespaceAndPath(WaylandCraftCommon.MOD_ID, "pipeline/window_cutout"))
 			.withShaderDefine("ALPHA_CUTOUT")
-			.build();
+			.build());
 	
-	private static final RenderPipeline WINDOW_TRANSLUCENT_PIPELINE = RenderPipeline.builder(WINDOW_PIPELINE_SNIPPET)
+	private static final RenderPipeline WINDOW_TRANSLUCENT_PIPELINE = RenderPipelines.register(RenderPipeline.builder(WINDOW_PIPELINE_SNIPPET)
 			.withLocation(Identifier.fromNamespaceAndPath(WaylandCraftCommon.MOD_ID, "pipeline/window_translucent"))
 			.withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
-			.build();
+			.build());
 	
-	private static final RenderPipeline WINDOW_CUTOUT_ANTIALIASING_PIPELINE = RenderPipeline.builder(WINDOW_PIPELINE_SNIPPET)
-			.withLocation(Identifier.fromNamespaceAndPath(WaylandCraftCommon.MOD_ID, "pipeline/window_cutout"))
+	private static final RenderPipeline WINDOW_CUTOUT_ANTIALIASING_PIPELINE = RenderPipelines.register(RenderPipeline.builder(WINDOW_PIPELINE_SNIPPET)
+			.withLocation(Identifier.fromNamespaceAndPath(WaylandCraftCommon.MOD_ID, "pipeline/window_cutout_antialias"))
 			.withShaderDefine("ALPHA_CUTOUT")
 			.withShaderDefine("RGSS")
-			.build();
+			.build());
 	
-	private static final RenderPipeline WINDOW_TRANSLUCENT_ANTIALIASING_PIPELINE = RenderPipeline.builder(WINDOW_PIPELINE_SNIPPET)
-			.withLocation(Identifier.fromNamespaceAndPath(WaylandCraftCommon.MOD_ID, "pipeline/window_translucent"))
+	private static final RenderPipeline WINDOW_TRANSLUCENT_ANTIALIASING_PIPELINE = RenderPipelines.register(RenderPipeline.builder(WINDOW_PIPELINE_SNIPPET)
+			.withLocation(Identifier.fromNamespaceAndPath(WaylandCraftCommon.MOD_ID, "pipeline/window_translucent_antialias"))
 			.withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
 			.withShaderDefine("RGSS")
-			.build();
+			.build());
 	
-	private static final RenderPipeline WINDOW_CUTOUT_BACKGROUND_PIPELINE = RenderPipeline.builder(WINDOW_PIPELINE_SNIPPET)
+	private static final RenderPipeline WINDOW_CUTOUT_BACKGROUND_PIPELINE = RenderPipelines.register(RenderPipeline.builder(WINDOW_PIPELINE_SNIPPET)
 			.withLocation(Identifier.fromNamespaceAndPath(WaylandCraftCommon.MOD_ID, "pipeline/window_cutout_background"))
 			.withShaderDefine("ALPHA_CUTOUT")
 			.withShaderDefine("NO_COLOR")
-			.build();
+			.build());
 	
-	private static final RenderPipeline WINDOW_TRANSLUCENT_BACKGROUND_PIPELINE = RenderPipeline.builder(WINDOW_PIPELINE_SNIPPET)
+	private static final RenderPipeline WINDOW_TRANSLUCENT_BACKGROUND_PIPELINE = RenderPipelines.register(RenderPipeline.builder(WINDOW_PIPELINE_SNIPPET)
 			.withLocation(Identifier.fromNamespaceAndPath(WaylandCraftCommon.MOD_ID, "pipeline/window_translucent_background"))
 			.withShaderDefine("NO_COLOR")
 			.withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
-			.build();
+			.build());
 	
 	public static final Supplier<GpuSampler> WINDOW_SAMPLER = () -> RenderSystem.getSamplerCache().getSampler(AddressMode.CLAMP_TO_EDGE, AddressMode.CLAMP_TO_EDGE, FilterMode.LINEAR, FilterMode.NEAREST, false);
 	
@@ -144,7 +145,7 @@ public class RenderUtils {
 	public static void renderFramebuffer(WindowFramebuffer framebuffer, PoseStack poseStack, SubmitNodeCollector collector, boolean cutout, Vec3 origin, Vec3 spanX, Vec3 spanY) {
 		if(!framebuffer.isValid()) return;
 		
-		if(IrisCompat.isShaderActive()) {
+		if(USE_VANILLA_FRAMEBUFFER_RENDER_TYPE || IrisCompat.isShaderActive()) {
 			collector.submitCustomGeometry(poseStack, RenderTypes.entityCutoutCull(framebuffer.getTextureLocation()), new FramebufferRenderInstanceEntity(origin, spanX, spanY, ARGB.white(1.0f), OverlayTexture.NO_OVERLAY, LightCoordsUtil.FULL_BRIGHT, false));
 			collector.submitCustomGeometry(poseStack, RenderTypes.entityCutoutCull(framebuffer.getTextureLocation()), new FramebufferRenderInstanceEntity(origin, spanX, spanY, ARGB.black(1.0f), OverlayTexture.NO_OVERLAY, LightCoordsUtil.FULL_BRIGHT, true));
 			return;

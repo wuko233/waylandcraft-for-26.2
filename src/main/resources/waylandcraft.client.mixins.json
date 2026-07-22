@@ -2,11 +2,13 @@
 	"required": true,
 	"package": "dev.evvie.waylandcraft.mixin",
 	"compatibilityLevel": "JAVA_25",
+	"refmap": "waylandcraft-refmap.json",
 	"mixins": [
 		"MouseHandlerMixin",
 		"GlBackendMixin",
 		"KeyboardHandlerMixin",
 		"IMouseHandlerMixin",
+		"IGlTextureMixin",
 		"ItemInHandRendererMixin",
 		"IItemInHandRendererMixin",
 		"MinecraftMixin",

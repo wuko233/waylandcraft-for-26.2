@@ -17,6 +17,7 @@
 			"dev.evvie.waylandcraft.WaylandCraft"
 		]
 	},
+	"accessWidener": "waylandcraft.accesswidener",
 	"mixins": [
 		"waylandcraft.mixins.json",
 		{

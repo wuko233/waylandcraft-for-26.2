@@ -24,6 +24,7 @@ import com.mojang.blaze3d.shaders.UniformType;
 import com.mojang.blaze3d.systems.RenderPass;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
+import com.mojang.blaze3d.textures.GpuTexture;
 import com.mojang.blaze3d.textures.GpuTextureView;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.ByteBufferBuilder;
@@ -49,7 +50,9 @@ import net.minecraft.resources.Identifier;
 
 public class WindowFramebuffer implements FramebufferRenderable {
 	
-	private static final BindGroupLayout SAMPLER_LAYOUT = BindGroupLayout.builder().withSampler("sampler").withUniform("window_info", UniformType.UNIFORM_BUFFER).build();
+	private static final BindGroupLayout WINDOW_LAYOUT = BindGroupLayout.builder().withSampler("sampler").withUniform("window_info", UniformType.UNIFORM_BUFFER).build();
+	private static final BindGroupLayout SAMPLER_LAYOUT = BindGroupLayout.builder().withSampler("sampler").build();
+	private static final BindGroupLayout WINDOW_INFO_LAYOUT = BindGroupLayout.builder().withUniform("window_info", UniformType.UNIFORM_BUFFER).build();
 	
 	public static final RenderPipeline WINDOW_PIPELINE = RenderPipelines.register(
 		RenderPipeline.builder()
@@ -58,7 +61,7 @@ public class WindowFramebuffer implements FramebufferRenderable {
 		.withFragmentShader(Identifier.fromNamespaceAndPath(WaylandCraftCommon.MOD_ID, "window"))
 		.withVertexBinding(0, DefaultVertexFormat.POSITION_TEX)
 		.withPrimitiveTopology(PrimitiveTopology.QUADS)
-		.withBindGroupLayout(SAMPLER_LAYOUT)
+		.withBindGroupLayout(WINDOW_LAYOUT)
 		.withColorTargetState(new ColorTargetState(new BlendFunction(BlendFactor.ONE, BlendFactor.ONE_MINUS_SRC_ALPHA)))
 		.withCull(false)
 		.build()
@@ -82,7 +85,7 @@ public class WindowFramebuffer implements FramebufferRenderable {
 		.withFragmentShader(Identifier.fromNamespaceAndPath(WaylandCraftCommon.MOD_ID, "window_damage"))
 		.withVertexBinding(0, DefaultVertexFormat.POSITION_TEX)
 		.withPrimitiveTopology(PrimitiveTopology.QUADS)
-		.withBindGroupLayout(SAMPLER_LAYOUT)
+		.withBindGroupLayout(WINDOW_INFO_LAYOUT)
 		.withColorTargetState(new ColorTargetState(new BlendFunction(BlendFactor.ONE, BlendFactor.ONE_MINUS_SRC_ALPHA)))
 		.withCull(false)
 		.build()
@@ -94,6 +97,8 @@ public class WindowFramebuffer implements FramebufferRenderable {
 	public final WLCSurface surfaceTree;
 	private TextureTarget tempTarget = null;
 	private TextureTarget target = null;
+	private GpuTexture sampleTexture = null;
+	private GpuTextureView sampleTextureView = null;
 	private FramebufferTexture texture = null;
 	private Identifier location = null;
 	
@@ -157,6 +162,11 @@ public class WindowFramebuffer implements FramebufferRenderable {
 			target = new TextureTarget(name(), width, height, false, GpuFormat.RGBA8_UNORM);
 		}
 		
+		if(sampleTexture == null) {
+			sampleTexture = RenderSystem.getDevice().createTexture(name() + "-sample", GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_TEXTURE_BINDING, GpuFormat.RGBA8_UNORM, width, height, 1, 1);
+			sampleTextureView = RenderSystem.getDevice().createTextureView(sampleTexture);
+		}
+
 		if(texture == null) registerTexture();
 	}
 	
@@ -190,7 +200,7 @@ public class WindowFramebuffer implements FramebufferRenderable {
 					pass.bindTexture("sampler", element.textureView, RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST));
 					pass.setVertexBuffer(0, element.vertexBuffer.slice());
 					pass.setIndexBuffer(element.indexBuffer, element.indexType);
-					pass.drawIndexed(0, 0, element.indexCount, 1, 0);
+					pass.drawIndexed(element.indexCount, 1, 0, 0, 0);
 				}
 			}
 		}
@@ -205,7 +215,11 @@ public class WindowFramebuffer implements FramebufferRenderable {
 		try(RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "window framebuffer unpremultiply", target.getColorTextureView(), Optional.empty())) {
 			pass.setPipeline(UNPREMULTIPLY_PIPELINE);
 			pass.bindTexture("sampler", tempTarget.getColorTextureView(), RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST));
-			pass.draw(0, 3, 1, 0);
+			pass.draw(3, 1, 0, 0);
+		}
+
+		if(sampleTexture != null) {
+			RenderSystem.getDevice().createCommandEncoder().copyTextureToTexture(target.getColorTextureView().texture(), sampleTexture, 0, 0, 0, 0, 0, width, height);
 		}
 	}
 	
@@ -227,7 +241,7 @@ public class WindowFramebuffer implements FramebufferRenderable {
 				for(CompiledBufferDraw element : damageElements) {
 					pass.setVertexBuffer(0, element.vertexBuffer.slice());
 					pass.setIndexBuffer(element.indexBuffer, element.indexType);
-					pass.drawIndexed(0, 0, element.indexCount, 1, 0);
+					pass.drawIndexed(element.indexCount, 1, 0, 0, 0);
 				}
 			}
 		}
@@ -289,7 +303,7 @@ public class WindowFramebuffer implements FramebufferRenderable {
 	private void registerTexture() {
 		if(target == null) return;
 		
-		texture = new FramebufferTexture(getTextureView());
+		texture = new FramebufferTexture(this);
 		location = Identifier.fromNamespaceAndPath(WaylandCraftCommon.MOD_ID, name());
 		
 		Minecraft.getInstance().getTextureManager().register(location, texture);
@@ -305,9 +319,13 @@ public class WindowFramebuffer implements FramebufferRenderable {
 	public void destroy() {
 		if(target != null) target.destroyBuffers();
 		if(tempTarget != null) tempTarget.destroyBuffers();
+		if(sampleTextureView != null) sampleTextureView.close();
+		if(sampleTexture != null) sampleTexture.close();
 		if(texture != null) unregisterTexture();
 		target = null;
 		tempTarget = null;
+		sampleTexture = null;
+		sampleTextureView = null;
 	}
 	
 	@Override
@@ -331,8 +349,7 @@ public class WindowFramebuffer implements FramebufferRenderable {
 	}
 	
 	public GpuTextureView getTextureView() {
-		if(target == null) return null;
-		return target.getColorTextureView();
+		return sampleTextureView;
 	}
 	
 	public Identifier getTextureLocation() {
@@ -344,11 +361,25 @@ public class WindowFramebuffer implements FramebufferRenderable {
 	}
 	
 	private static class FramebufferTexture extends AbstractTexture {
+		private final WindowFramebuffer framebuffer;
 		
-		public FramebufferTexture(GpuTextureView textureView) {
-			this.textureView = textureView;
-			this.texture = textureView.texture();
+		public FramebufferTexture(WindowFramebuffer framebuffer) {
+			this.framebuffer = framebuffer;
+			this.textureView = framebuffer.getTextureView();
+			this.texture = this.textureView.texture();
 			this.sampler = RenderUtils.WINDOW_SAMPLER.get();
+		}
+
+		@Override
+		public GpuTexture getTexture() {
+			GpuTextureView view = framebuffer.getTextureView();
+			return view == null ? this.texture : view.texture();
+		}
+
+		@Override
+		public GpuTextureView getTextureView() {
+			GpuTextureView view = framebuffer.getTextureView();
+			return view == null ? this.textureView : view;
 		}
 		
 		@Override
