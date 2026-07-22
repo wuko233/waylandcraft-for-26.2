@@ -6,6 +6,10 @@ Wayland Compositor in Minecraft
 
 Now available on [Modrinth](https://modrinth.com/mod/waylandcraft)!
 
+> **This is a community fork for Minecraft 26.2 only.**
+> Changes in this fork were made with the assistance of generative AI (large language models).
+> No pull requests will be submitted to the upstream repository.
+
 ## System dependencies
 - OS: Linux
 - Minecraft 26.2
