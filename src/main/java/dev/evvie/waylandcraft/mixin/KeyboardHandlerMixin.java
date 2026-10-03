@@ -14,7 +14,11 @@ import net.minecraft.client.input.KeyEvent;
 @Mixin(KeyboardHandler.class)
 public class KeyboardHandlerMixin {
 	
-	@Inject(method = "keyPress", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/platform/InputConstants;getKey(Lnet/minecraft/client/input/KeyEvent;)Lcom/mojang/blaze3d/platform/InputConstants$Key;", ordinal = 1), cancellable = true)
+	// Targets the getKey call on the in-game key handling path (the one feeding
+	// KeyMapping.set/click). In Minecraft 26.2 keyPress contains three getKey(KeyEvent)
+	// calls in bytecode order: handleGlobalKeyPress, the screen.keyPressed branch, and
+	// the in-game branch. This must stay pointed at the last one.
+	@Inject(method = "keyPress", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/platform/InputConstants;getKey(Lnet/minecraft/client/input/KeyEvent;)Lcom/mojang/blaze3d/platform/InputConstants$Key;", ordinal = 2), cancellable = true)
 	public void onPressInGame(long windowHandle, int action, KeyEvent event, CallbackInfo info) {
 		int scancode = WaylandCraft.correctScancode(event.scancode());
 		
