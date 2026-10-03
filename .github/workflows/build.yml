@@ -1,6 +1,11 @@
-name: Build waylandcraft release
+name: Build and release waylandcraft-for-26.2
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+permissions:
+  contents: write
 jobs:
   compile-native-libs:
     strategy:
@@ -30,6 +35,7 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-artifact@v7
       with:
+        name: native-${{ matrix.platform.name }}
         path: native-libs/libwaylandcraft-${{ matrix.platform.name }}.so
         archive: false
   build-java:
@@ -41,7 +47,7 @@ jobs:
       uses: actions/download-artifact@v8
       with:
         path: native-libs
-        pattern: libwaylandcraft-*.so
+        pattern: native-*
         merge-multiple: true
     - name: Set up JDK 25
       uses: actions/setup-java@v5
@@ -55,5 +61,25 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-artifact@v7
       with:
-        path: build/libs/waylandcraft.jar
+        name: waylandcraft-jar
+        path: build/libs/waylandcraft-for-26.2.jar
         archive: false
+  release:
+    runs-on: ubuntu-22.04
+    needs: build-java
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+    - name: Download mod jar
+      uses: actions/download-artifact@v8
+      with:
+        name: waylandcraft-jar
+        path: dist
+    - name: Create GitHub release
+      uses: softprops/action-gh-release@v2
+      with:
+        name: waylandcraft-for-26.2 ${{ github.ref_name }}
+        tag_name: ${{ github.ref_name }}
+        files: dist/waylandcraft-for-26.2.jar
+        generate_release_notes: true
+        draft: false
+        prerelease: false
